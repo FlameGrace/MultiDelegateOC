@@ -10,9 +10,21 @@
 
 @implementation Demo2
 
-- (void)changeDemoSource
+- (NSNumber *)getId
 {
-    NSLog(@"Demo2");
+    NSLog(@"Demo2 return nil");
+    return nil;
+}
+
+- (int)getInt
+{
+    NSLog(@"Demo2 return 4");
+    return 4;
+}
+
+- (void)getNoReturn
+{
+    NSLog(@"Demo2 get no return ");
 }
 
 @end

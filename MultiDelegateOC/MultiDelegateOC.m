@@ -132,17 +132,31 @@
     BOOL responded = NO;
     
     NSArray *copiedDelegates = [self.delegates copy];
+    void *returnValue = NULL;
     for (id delegate in copiedDelegates)
     {
         if (delegate && [delegate respondsToSelector:selector])
         {
             [invocation invokeWithTarget:delegate];
+            if(invocation.methodSignature.methodReturnLength != 0)
+            {
+                void *value = nil;
+                [invocation getReturnValue:&value];
+                if(value)
+                {
+                    returnValue = value;
+                }
+            }
             responded = YES;
         }
     }
+    if(returnValue)
+    {
+        [invocation setReturnValue:&returnValue];
+    }
     if (!responded && !self.silentWhenEmpty)
     {
-         [self doesNotRecognizeSelector:selector];
+        [self doesNotRecognizeSelector:selector];
     }
 }
 

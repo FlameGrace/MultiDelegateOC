@@ -11,7 +11,9 @@
 
 @protocol DemoSourceDelegate <NSObject>
 
-- (void)changeDemoSource;
+- (NSNumber *)getId;
+- (int)getInt;
+- (void)getNoReturn;
 
 @end
 
@@ -20,6 +22,8 @@
 
 @property (weak, nonatomic) id <DemoSourceDelegate> delegate;
 
-- (void)change;
+- (void)getId;
+- (void)getInt;
+- (void)getNoReturn;
 
 @end

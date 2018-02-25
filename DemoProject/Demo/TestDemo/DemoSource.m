@@ -17,11 +17,28 @@
 @implementation DemoSource
 
 
-- (void)change
+- (void)getId
 {
-    if(self.delegate && [self.delegate respondsToSelector:@selector(changeDemoSource)])
+    if(self.delegate && [self.delegate respondsToSelector:@selector(getId)])
     {
-        [self.delegate changeDemoSource];
+        NSNumber *d = [self.delegate getId];
+        NSLog(@"Real number is %@",d);
+    }
+}
+
+- (void)getInt
+{
+    if(self.delegate && [self.delegate respondsToSelector:@selector(getInt)])
+    {
+        int d = [self.delegate getInt];
+        NSLog(@"Real number is %d",d);
+    }
+}
+- (void)getNoReturn
+{
+    if(self.delegate && [self.delegate respondsToSelector:@selector(getNoReturn)])
+    {
+        [self.delegate getNoReturn];
     }
 }
 
