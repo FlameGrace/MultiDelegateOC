@@ -105,12 +105,6 @@
     }
     
     [self.delegates compact];
-    if (self.silentWhenEmpty && self.delegates.count == 0)
-    {
-        // return any method signature, it doesn't really matter
-        return [self methodSignatureForSelector:@selector(description)];
-    }
-    
     for (id delegate in self.delegates)
     {
         if (!delegate)
@@ -122,6 +116,10 @@
         {
              break;
         }
+    }
+    if(!signature && self.silentWhenEmpty)
+    {
+        return [NSMethodSignature signatureWithObjCTypes:"v@:@"];
     }
     return signature;
 }
