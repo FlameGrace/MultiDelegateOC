@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name         = "MultiDelegateOC"
-  s.version      = "0.0.4"
+  s.version      = "0.0.6"
   s.summary      = "It can provide a multi delegate model for iOS and OSX."
   s.homepage     = "https://github.com/FlameGrace/MultiDelegateOC"
   s.license      = "BSD"
@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.osx.deployment_target = '10.9'
   s.watchos.deployment_target = '2.0'
   s.tvos.deployment_target = '9.0'
-  s.source       = { :git => "https://github.com/FlameGrace/MultiDelegateOC.git", :tag => "0.0.4" }
+  s.source       = { :git => "https://github.com/FlameGrace/MultiDelegateOC.git", :tag => "0.0.6" }
   s.source_files  = "MultiDelegateOC", "MultiDelegateOC/**/*.{h,m}"
   s.public_header_files = "MultiDelegateOC/**/*.h"
 end

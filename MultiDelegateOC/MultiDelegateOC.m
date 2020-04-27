@@ -7,11 +7,28 @@
 
 #import "MultiDelegateOC.h"
 
-@interface MultiDelegateOC()
+@interface FGPrivate_WeakDelegateObject : NSObject
 
-@property (readwrite,strong,nonatomic) NSPointerArray* delegates;
+@property (weak, nonatomic) id delegate;
 
 @end
+
+@implementation FGPrivate_WeakDelegateObject
+
+- (NSString *)description{
+    return [NSString stringWithFormat:@"%@",self.delegate];
+}
+
+@end
+
+
+@interface MultiDelegateOC()
+
+@property (readwrite,strong,nonatomic) NSMutableArray* delegates;
+
+@end
+
+
 
 @implementation MultiDelegateOC
 
@@ -24,73 +41,99 @@
     return self;
 }
 
-- (void)addDelegate:(id)delegate
-{
-    [self.delegates addPointer:(__bridge void*)delegate];
-}
-
-- (NSUInteger)indexOfDelegate:(id)delegate
-{
-    for (NSUInteger i = 0; i < self.delegates.count; i += 1) {
-        if ([self.delegates pointerAtIndex:i] == (__bridge void*)delegate) {
-            return i;
+- (FGPrivate_WeakDelegateObject *)findDelegateObjectByDelegate:(id)delegate{
+    if(!delegate){
+        return nil;
+    }
+    NSArray *delegates = [NSArray arrayWithArray:self.delegates];
+    for (FGPrivate_WeakDelegateObject *delegateObject in delegates) {
+        if(delegateObject.delegate && [delegateObject.delegate isEqual:delegate]){
+            return delegateObject;
         }
     }
-    return NSNotFound;
+    return nil;
 }
 
-- (void)addDelegate:(id)delegate beforeDelegate:(id)otherDelegate
+- (void)addDelegate:(id)delegate
 {
-    NSUInteger index = [self indexOfDelegate:otherDelegate];
-    if (index == NSNotFound)
-    {
-        index = self.delegates.count;
-    }
-    [self.delegates insertPointer:(__bridge void*)delegate atIndex:index];
+    [self addDelegate:delegate before:NO otherDelegate:nil];
 }
 
-- (void)addDelegate:(id)delegate afterDelegate:(id)otherDelegate
-{
-    NSUInteger index = [self indexOfDelegate:otherDelegate];
-    if (index == NSNotFound)
-    {
-        index = 0;
-    }
-    else
-    {
-        index += 1;
-    }
-    [self.delegates insertPointer:(__bridge void*)delegate atIndex:index];
+- (void)addDelegate:(id)delegate beforeDelegate:(id)otherDelegate{
+    [self addDelegate:delegate before:YES otherDelegate:otherDelegate];
 }
 
-- (void)removeDelegate:(id)delegate
-{
-    NSUInteger index = [self indexOfDelegate:delegate];
-    if (index != NSNotFound)
-    {
-        [self.delegates removePointerAtIndex:index];
+- (void)addDelegate:(id)delegate afterDelegate:(id)otherDelegate{
+    [self addDelegate:delegate before:NO otherDelegate:otherDelegate];
+}
+
+- (void)addDelegate:(id)delegate before:(BOOL)before otherDelegate:(id)otherDelegate{
+    @synchronized (self) {
+        if(!delegate){
+            return;
+        }
+        FGPrivate_WeakDelegateObject *otherDelegateObject = [self findDelegateObjectByDelegate:otherDelegate];
+        FGPrivate_WeakDelegateObject *delegateObject = [self findDelegateObjectByDelegate:delegate];
+        if(!delegateObject){
+            delegateObject = [[FGPrivate_WeakDelegateObject alloc]init];
+            delegateObject.delegate = delegate;
+            if(!otherDelegateObject){
+                [self.delegates addObject:delegateObject];
+                return;
+            }
+        }else{
+            if(!otherDelegateObject){
+                return;
+            }
+            [self.delegates removeObject:delegateObject];
+        }
+        NSInteger index = [self.delegates indexOfObject:otherDelegateObject];
+        if(!before){
+            index = [self.delegates indexOfObject:otherDelegateObject]+1;
+            if(index > self.delegates.count){
+                index = self.delegates.count;
+            }
+        }
+        [self.delegates insertObject:delegateObject atIndex:index];
     }
-    [self.delegates compact];
+}
+
+- (void)fg_private_compact{
+    @synchronized (self) {
+        NSArray *delegates = [NSArray arrayWithArray:self.delegates];
+        for (FGPrivate_WeakDelegateObject *delegateObject in delegates) {
+            if(!delegateObject.delegate){
+                [self.delegates removeObject:delegateObject];
+            }
+        }
+    }
+}
+
+- (void)removeDelegate:(id)delegate{
+    @synchronized (self) {
+        FGPrivate_WeakDelegateObject *exist = [self findDelegateObjectByDelegate:delegate];
+        if(exist){
+            [self.delegates removeObject:exist];
+        }
+    }
 }
 
 - (void)removeAllDelegates
 {
-    for (NSUInteger i = self.delegates.count; i > 0; i -= 1)
-    {
-         [self.delegates removePointerAtIndex:i - 1];
+    @synchronized (self) {
+        [self.delegates removeAllObjects];
     }
 }
 
 - (BOOL)respondsToSelector:(SEL)selector
 {
-    if ([super respondsToSelector:selector])
-    {
+    if ([super respondsToSelector:selector]){
         return YES;
     }
-    for (id delegate in self.delegates)
-    {
-        if (delegate && [delegate respondsToSelector:selector])
-        {
+    [self fg_private_compact];
+    NSArray *delegates = [NSArray arrayWithArray:self.delegates];
+    for (FGPrivate_WeakDelegateObject *delegateObject in delegates){
+        if (delegateObject.delegate && [delegateObject.delegate respondsToSelector:selector]){
             return YES;
         }
     }
@@ -99,26 +142,20 @@
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
     NSMethodSignature* signature = [super methodSignatureForSelector:selector];
-    if (signature)
-    {
+    if (signature){
         return signature;
     }
-    
-    [self.delegates compact];
-    for (id delegate in self.delegates)
-    {
-        if (!delegate)
-        {
+    NSArray *delegates = [NSArray arrayWithArray:self.delegates];
+    for (FGPrivate_WeakDelegateObject *delegateObject in delegates){
+        if (!delegateObject.delegate){
             continue;
         }
-        signature = [delegate methodSignatureForSelector:selector];
-        if (signature)
-        {
+        signature = [delegateObject.delegate methodSignatureForSelector:selector];
+        if (signature){
              break;
         }
     }
-    if(!signature && self.silentWhenEmpty)
-    {
+    if(!signature && self.silentWhenEmpty){
         return [NSMethodSignature signatureWithObjCTypes:"v@:@"];
     }
     return signature;
@@ -128,43 +165,35 @@
 {
     SEL selector = [invocation selector];
     BOOL responded = NO;
-    
-    NSArray *copiedDelegates = [self.delegates copy];
     void *returnValue = NULL;
-    for (id delegate in copiedDelegates)
-    {
-        if (delegate && [delegate respondsToSelector:selector])
-        {
-            [invocation invokeWithTarget:delegate];
-            if(invocation.methodSignature.methodReturnLength != 0)
-            {
+    NSArray *delegates = [NSArray arrayWithArray:self.delegates];
+    for (FGPrivate_WeakDelegateObject *delegateObject in delegates){
+        if (delegateObject.delegate && [delegateObject.delegate respondsToSelector:selector]){
+            [invocation invokeWithTarget:delegateObject.delegate];
+            if(invocation.methodSignature.methodReturnLength != 0){
                 void *value = nil;
                 [invocation getReturnValue:&value];
-                if(value)
-                {
+                if(value){
                     returnValue = value;
                 }
             }
             responded = YES;
         }
     }
-    if(returnValue)
-    {
+    if(returnValue){
         [invocation setReturnValue:&returnValue];
     }
-    if (!responded && !self.silentWhenEmpty)
-    {
+    if (!responded && !self.silentWhenEmpty){
         [self doesNotRecognizeSelector:selector];
     }
 }
 
-- (NSPointerArray *)delegates
-{
-    if(!_delegates)
-    {
-        _delegates = [NSPointerArray weakObjectsPointerArray];
+- (NSMutableArray *)delegates{
+    if(!_delegates){
+        _delegates = [[NSMutableArray alloc]init];
     }
     return _delegates;
 }
 
 @end
+

@@ -6,21 +6,16 @@
 //  Copyright © 2016年 flamegrace@hotmail.com. All rights reserved.
 
 #import <Foundation/Foundation.h>
-
+//The mediation object holds the multi delegates array and forwards the delegate message
 @interface MultiDelegateOC : NSObject
 
 /**
  The array of registered delegates.
  */
-@property (readonly, nonatomic) NSPointerArray* delegates;
+@property (readonly, nonatomic) NSMutableArray* delegates;
 
 /**
- Set whether to throw unrecognized selector exceptions when calling delegate methods on an empty AIMultiDelegate.
- 
- When `slientWhenEmpty` is NO, the default, if a delegate selector is called and there are no registered delegates an
- unregonized selector execption will be thrown. Which, unless you have a try/catch block, will crash the app. Setting
- `silentWhenEmpt` to YES will silence the execptions by ignoring selector invocations when there are no registered
- delegates.
+ Whether to throw an exception when the delegate method has no implementer. Default is NO;
  */
 @property (nonatomic, assign) BOOL silentWhenEmpty;
 
